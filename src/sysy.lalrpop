@@ -1,0 +1,46 @@
+// lalrpop 语法
+grammar;
+
+// lexer 行为
+match {
+    // skip space & comment
+    r"\s*" => {},
+    r"//[^\n\r]*[\n\r]*" => {},
+    // 块注释这里不能用非贪婪regex，很奇怪
+    // r"/\*[\s\S]*\*/" => {},
+    r"/\*([^*]|\*+[^*/])*\*+/" => {},
+
+    // 剩下用默认方式
+    _
+}
+
+// define CompUnit, which returns String
+// parser returns value of FuncDef after parse
+pub CompUnit: String = <func_def: FuncDef> => func_def;
+
+// same as above
+FuncDef: String = {
+    <func_type: FuncType> <id: Ident> "(" ")" <block: Block> => {
+        format!("{} {}() {}", func_type, id, block)
+    }
+}
+
+FuncType: String = "int" => "int".to_string();
+
+Block: String = "{" <stmt: Stmt> "}" => format!("{{ {} }}", stmt);
+
+Stmt: String = "return" <num: Number> ";" => format!("return {};", num);
+
+Number: String = <num: IntConst> => num.to_string();
+
+// 下面两个是匹配终结符
+// 如果匹配到标识符, 就返回这个字符串
+// 一对尖括号在此处指代的是正则表达式匹配到的字符串 (&str)
+Ident: String = r"[_a-zA-Z][_a-zA-Z0-9]*" => <>.to_string();
+
+// 对整数字面量的处理方式: 把匹配到的字符串按对应进制转换成数字
+IntConst: i32 = {
+    r"[1-9][0-9]*" => i32::from_str_radix(<>, 10).unwrap(),
+    r"0[0-7]*" => i32::from_str_radix(<>, 8).unwrap(),
+    r"0[xX][0-9a-fA-F]+" => i32::from_str_radix(&<>[2..], 16).unwrap(),
+}
