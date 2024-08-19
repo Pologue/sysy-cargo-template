@@ -1,29 +1,24 @@
 use crate::ast::CompUnit;
-use koopa::front::ast::{FunDef, IntVal};
-use koopa::front::builder::Builder;
-use koopa::front::span::{Pos, Span};
+use koopa::ir::builder::{BasicBlockBuilder, LocalInstBuilder, ValueBuilder};
 use koopa::ir::entities::Program;
+use koopa::ir::{FunctionData, Type};
 
 
 pub fn ast2ir(ast: &CompUnit) -> Program {
-    let ret = IntVal::new_boxed(Span::new(Pos::new()), ast.func_def.block.stmt.num);
-    let ret1 = IntVal::new_boxed(Span::new(Pos::new()), ast.func_def.block.stmt.num);
-    let block = koopa::front::ast::Block::new_boxed(
-        Span::new(Pos::new()),
-        String::from("%entry"),
-        vec![],
-        vec![ret],
-    );
-    let func_def = FunDef::new_boxed(
-        Span::new(Pos::new()),
-        ast.func_def.ident.clone(),
-        vec![],
-        Some(ret1),
-        vec![block],
-    );
+    let name = ast.func_def.ident.clone();
 
-    let mut builder = Builder::new();
-    builder.build_on(&func_def);
+    let mut program = Program::new();
+    let main = program.new_func(
+        FunctionData::new(format!("@{name}").into(), Vec::new(), Type::get_i32()),
+    );
+    let main_data = program.func_mut(main);
 
-    builder.program()
+    let entry = main_data.dfg_mut().new_bb().basic_block(Some("%entry".into()));
+    let _ = main_data.layout_mut().bbs_mut().push_key_back(entry);
+
+    let num = main_data.dfg_mut().new_value().integer(ast.func_def.block.stmt.num);
+    let ret = main_data.dfg_mut().new_value().ret(Some(num));
+    let _ = main_data.layout_mut().bb_mut(entry).insts_mut().push_key_back(ret);
+
+    program
 }
