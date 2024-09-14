@@ -1,9 +1,11 @@
 mod ast;
 mod ir;
+mod asm;
 
 use std::env::args;
 use std::fs::{read_to_string, File};
-use std::io::{stdout, Result};
+use std::io::{stdout, Result, Write};
+use asm::GenerateAsm;
 use koopa::back::koopa::Visitor;
 use koopa::back::Generator;
 use lalrpop_util::lalrpop_mod;
@@ -28,19 +30,32 @@ fn main() -> Result<()> {
     let ast = sysy::CompUnitParser::new().parse(&input).unwrap();
 
     // print the AST
-    println!("{:#?}", ast);
+    // println!("{:#?}", ast);
 
     // convert the AST to IR
     let ir = ir::ast2ir(&ast);
     
-    // generate the output
-    let mut gen: Generator<std::io::Stdout, Visitor<>> = Generator::new(stdout());
-    let _ = gen.generate_on(&ir)?;
-
-    // write the output to the output file
-    let output = File::create(output)?;
-    let mut gen: Generator<File, Visitor<>> = Generator::new(output);
-    let _ = gen.generate_on(&ir)?;
+    // match the mode
+    match mode.as_str() {
+        "-koopa" => {
+            // print the koopa ir
+            let mut gen: Generator<std::io::Stdout, Visitor<>> = Generator::new(stdout());
+            let _ = gen.generate_on(&ir)?;
+        
+            // write the koopa ir to the output file
+            let output = File::create(output)?;
+            let mut gen: Generator<File, Visitor<>> = Generator::new(output);
+            let _ = gen.generate_on(&ir)?;
+        }
+        "-riscv" => {
+            // generate assembly code
+            let asm = ir.generate();
+            println!("{}", asm);
+            let mut output_file = File::create(output)?;
+            output_file.write_all(asm.as_bytes())?;
+        }
+        _ => unreachable!(),
+    }
 
     Ok(())
 }
