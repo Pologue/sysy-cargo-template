@@ -18,6 +18,8 @@ match {
 
 // define CompUnit, which returns String
 // parser returns value of FuncDef after parse
+// 类型注释为 Rust AST 中的实际类型
+// => 前为匹配到的字符串，后为返回的值
 pub CompUnit: CompUnit = <func_def: FuncDef> => CompUnit { <> };
 
 // same as above
@@ -31,7 +33,25 @@ FuncType: FuncType = "int" => FuncType::Int;
 
 Block: Block = "{" <stmt: Stmt> "}" => Block { <> };
 
-Stmt: Stmt = "return" <num: Number> ";" => Stmt { <> };
+Stmt: Stmt = "return" <exp: Exp> ";" => Stmt { <> };
+
+Exp: Exp = <unary_exp: UnaryExp> => Exp { <> };
+
+PrimaryExp: PrimaryExp = {
+    "(" <exp: Exp> ")" => PrimaryExp { <> },
+    <num: Number> => PrimaryExp { <> },
+}
+
+UnaryExp: UnaryExp = {
+    <primaryExp: PrimaryExp> => UnaryExp { <> },
+    <unaryOp: UnaryOp> <unaryExp: UnaryExp> => UnaryExp { <> },
+}
+
+UnaryOp: UnaryOp = {
+    "+" => UnaryOp::Pos,
+    "-" => UnaryOp::Neg,
+    "!" => UnaryOp::Not,
+}
 
 Number: i32 = <num: IntConst> => <>;
 
