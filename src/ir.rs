@@ -4,6 +4,9 @@ use koopa::ir::entities::Program;
 use koopa::ir::{FunctionData, Type};
 
 
+// TODO: implement generate trait
+
+
 pub fn ast2ir(ast: &CompUnit) -> Program {
     let name = ast.func_def.ident.clone();
 
